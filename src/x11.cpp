@@ -43,6 +43,8 @@ namespace JSDXDisplay {
 
 		/* Handle all events */
 		while(XPending(display)) {
+			XNextEvent(display, &x11event);
+
 			switch(x11event.type - xrandr_event_base) {
 			case RRScreenChangeNotify:
 
@@ -62,8 +64,6 @@ namespace JSDXDisplay {
 				}
 				break;
 			}
-
-			XNextEvent(display, &x11event);
 		}
 	}
 
