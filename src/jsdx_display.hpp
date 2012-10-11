@@ -3,7 +3,7 @@
 
 #include <v8.h>
 
-namespace JSDXToolkit {
+namespace JSDXDisplay {
 
 #define JSDX_DISPLAY_DEFINE_CONSTANT(target, name, constant)					\
 	(target)->Set(v8::String::NewSymbol(name),							\
