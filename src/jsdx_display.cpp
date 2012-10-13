@@ -34,6 +34,66 @@ namespace JSDXDisplay {
 		return Undefined();
 	}
 
+	static Handle<Value> GetOutputCount(const Arguments& args)
+	{
+		HandleScope scope;
+		XRRScreenResources *res;
+
+		/* Get current display */
+		Display *disp = XOpenDisplay(NULL);
+
+		res = XRRGetScreenResources(disp, DefaultRootWindow(disp));
+
+		return scope.Close(Integer::New(res->noutput));
+	}
+
+	static Handle<Value> GetOutputs(const Arguments& args)
+	{
+		HandleScope scope;
+
+		int i;
+		XRRScreenResources *res;
+		XRROutputInfo *output_info = NULL;
+		XRRCrtcInfo *crtc_info = NULL;
+		Local<Array> outputs = Array::New();
+		Local<Object> o;
+
+		/* Get current display */
+		Display *disp = XOpenDisplay(NULL);
+
+		res = XRRGetScreenResources(disp, DefaultRootWindow(disp));
+		for (i = 0; i < res->noutput; ++i) {
+			output_info = XRRGetOutputInfo(disp, res, res->outputs[i]);
+
+			o = Object::New();
+			o->Set(String::New("name"), String::New(output_info->name));
+
+			/* Connected or not */
+			switch(output_info->connection) {
+			case RR_Connected:
+				o->Set(String::New("connection"), String::New("connected"));
+				break;
+			case RR_Disconnected:
+				o->Set(String::New("connection"), String::New("disconnected"));
+				break;
+			default:
+				o->Set(String::New("connection"), String::New("unknown"));
+			}
+
+			/* Get offset */
+			if (res->ncrtc > i) {
+				crtc_info = XRRGetCrtcInfo(disp, res, res->crtcs[i]);
+
+				o->Set(String::New("offset_x"), Integer::New(crtc_info->x));
+				o->Set(String::New("offset_y"), Integer::New(crtc_info->y));
+			}
+
+			outputs->Set(i, o);
+		}
+
+		return scope.Close(outputs);
+	}
+
 	static Handle<Value> GetScreenWidth(const Arguments& args)
 	{
 		HandleScope scope;
@@ -85,6 +145,8 @@ namespace JSDXDisplay {
 
 		NODE_SET_METHOD(target, "displayInit", DisplayInit);
 		NODE_SET_METHOD(target, "displayUninit", DisplayUninit);
+		NODE_SET_METHOD(target, "getOutputCount", GetOutputCount);
+		NODE_SET_METHOD(target, "getOutputs", GetOutputs);
 		NODE_SET_METHOD(target, "getScreenWidth", GetScreenWidth);
 		NODE_SET_METHOD(target, "getScreenHeight", GetScreenHeight);
 		NODE_SET_METHOD(target, "eventDispatch", EventDispatch);
