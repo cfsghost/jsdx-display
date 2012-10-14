@@ -2,6 +2,7 @@
 #include <node.h>
 #include <X11/extensions/Xrandr.h>
 #include <X11/Xlib.h>
+#include <math.h>
 
 #include "jsdx_display.hpp"
 
@@ -51,7 +52,7 @@ namespace JSDXDisplay {
 	{
 		HandleScope scope;
 
-		int i;
+		int i, j, k;
 		XRRScreenResources *res;
 		XRROutputInfo *output_info = NULL;
 		XRRCrtcInfo *crtc_info = NULL;
@@ -81,11 +82,42 @@ namespace JSDXDisplay {
 			}
 
 			/* Get offset */
-			if (res->ncrtc > i) {
-				crtc_info = XRRGetCrtcInfo(disp, res, res->crtcs[i]);
+			if (output_info->crtc) {
+				o->Set(String::New("enabled"), Boolean::New(true));
+				
+				crtc_info = XRRGetCrtcInfo(disp, res, output_info->crtc);
 
 				o->Set(String::New("offset_x"), Integer::New(crtc_info->x));
 				o->Set(String::New("offset_y"), Integer::New(crtc_info->y));
+			} else {
+				o->Set(String::New("enabled"), Boolean::New(false));
+			}
+
+			/* Get Modes */
+			Local<Array> modes = Array::New();
+			o->Set(String::New("modes"), modes);
+			for (j = 0; j < output_info->nmode; ++j) {
+
+				for (k = 0; k < res->nmode; ++k) {
+					if (res->modes[k].id == output_info->modes[j]) {
+						Local<Object> mode = Object::New();
+						mode->Set(String::New("name"), String::New(res->modes[k].name));
+						mode->Set(String::New("width"), Integer::New(res->modes[k].width));
+						mode->Set(String::New("height"), Integer::New(res->modes[k].height));
+						mode->Set(String::New("refresh"),
+							Integer::New(
+								round((double) res->modes[k].dotClock /
+								((double) res->modes[k].hTotal * (double) res->modes[k].vTotal))
+							));
+						modes->Set(j, mode);
+
+						/* This mode is used */
+						if (crtc_info && res->modes[k].id == crtc_info->mode) {
+							o->Set(String::New("mode"), mode);
+						}
+						break;
+					}
+				}
 			}
 
 			outputs->Set(i, o);
